@@ -73,22 +73,19 @@ public class MainActivity extends AppCompatActivity {
     private void startCamera() {
         CameraX.unbindAll();
         try {
-            CameraX.getCameraWithLensFacing(CameraX.LensFacing.BACK);
+            CameraX.getCameraWithLensFacing(CameraX.LensFacing.FRONT);
         } catch (CameraInfoUnavailableException e) {
             e.printStackTrace();
         }
-
         Rational aspectRatio = new Rational(textureView.getWidth(), textureView.getHeight());
         Size screen = new Size(textureView.getWidth(), textureView.getHeight()); //size of the screen
         Preview preview = getPreviewConfig(aspectRatio, screen);
         final ImageCapture imgCap = getImageCapture();
         VideoCapture videoCap = new VideoCapture(getVideoCaptureConfig(screen));
-        ImageAnalysis analysis = getImageAnalysis(aspectRatio);
+        ImageAnalysis analysis = getImageAnalysis(aspectRatio, screen);
         //bind to lifecycle:
-        CameraX.bindToLifecycle((LifecycleOwner) this, imgCap, analysis);
+        CameraX.bindToLifecycle((LifecycleOwner) this, preview, analysis);
         initFaceDetection();
-
-        setCaptureButton(imgCap, videoCap);
     }
 
     private VideoCaptureConfig getVideoCaptureConfig(Size screen) {
@@ -146,29 +143,29 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private ImageAnalysis getImageAnalysis(Rational aspectRatio) {
+    private ImageAnalysis getImageAnalysis(Rational aspectRatio, Size screen) {
         ImageAnalysisConfig analysisConfig = new ImageAnalysisConfig.Builder()
                 .setTargetAspectRatio(aspectRatio)
-                .setTargetResolution(new Size(240, 240))
+                .setTargetResolution(new Size(600, 600))
                 .setTargetRotation(getWindowManager().getDefaultDisplay().getRotation())
-                .setLensFacing(CameraX.LensFacing.BACK)
+                .setLensFacing(CameraX.LensFacing.FRONT)
                 .build();
 
         ImageAnalysis analysis = new ImageAnalysis(analysisConfig);
-        analysis.setAnalyzer(new YourAnalyzer());
+        analysis.setAnalyzer(new CustomImageAnalyzer());
         return analysis;
     }
 
     private ImageCapture getImageCapture() {
         ImageCaptureConfig imageCaptureConfig = new ImageCaptureConfig.Builder().setCaptureMode(ImageCapture.CaptureMode.MAX_QUALITY)
-                .setTargetRotation(getWindowManager().getDefaultDisplay().getRotation()).setLensFacing(CameraX.LensFacing.BACK).
+                .setTargetRotation(getWindowManager().getDefaultDisplay().getRotation()).setLensFacing(CameraX.LensFacing.FRONT).
                         build();
         return new ImageCapture(imageCaptureConfig);
     }
 
     private Preview getPreviewConfig(Rational aspectRatio, Size screen) {
         PreviewConfig pConfig = new PreviewConfig.Builder().setTargetAspectRatio(aspectRatio).
-                setTargetResolution(screen).setLensFacing(CameraX.LensFacing.BACK).
+                setTargetResolution(screen).setLensFacing(CameraX.LensFacing.FRONT).
                 build();
         Preview preview = new Preview(pConfig);
 
@@ -190,7 +187,9 @@ public class MainActivity extends AppCompatActivity {
         highAccuracyOpts =
                 new FirebaseVisionFaceDetectorOptions.Builder()
                         .setPerformanceMode(FirebaseVisionFaceDetectorOptions.ACCURATE)
-                        .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_CONTOURS)
+                        .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
+                        .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
+                        .enableTracking()
                         .build();
     }
 
@@ -250,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private class YourAnalyzer implements ImageAnalysis.Analyzer {
+    private class CustomImageAnalyzer implements ImageAnalysis.Analyzer {
 
         private int degreesToFirebaseRotation(int degrees) {
             switch (degrees) {
@@ -285,22 +284,23 @@ public class MainActivity extends AppCompatActivity {
             Task<List<FirebaseVisionFace>> result =
                     detector.detectInImage(image)
                             .addOnSuccessListener(
-                                    new OnSuccessListener<List<FirebaseVisionFace>>() {
-                                        @Override
-                                        public void onSuccess(List<FirebaseVisionFace> faces) {
-                                            // Task completed successfully
-                                            // ...
-                                            Log.d(TAG, "Success ");
+                                    faces -> {
+                                        // Task completed successfully
+                                        // ...
+                                        int size = faces.size();
+                                        Log.d(TAG, "analyze: " + size);
+                                        if (size > 0) {
+                                            FirebaseVisionFace face = faces.get(0);
+                                            Log.d(TAG, "getRightEyeOpenProbability: " + face.getRightEyeOpenProbability());
+                                            Log.d(TAG, "getLeftEyeOpenProbability: " + face.getLeftEyeOpenProbability());
                                         }
+
                                     })
                             .addOnFailureListener(
-                                    new OnFailureListener() {
-                                        @Override
-                                        public void onFailure(@NonNull Exception e) {
-                                            // Task failed with an exception
-                                            // ...
-                                            Log.d(TAG, "Failure");
-                                        }
+                                    e -> {
+                                        // Task failed with an exception
+                                        // ...
+                                        Log.d(TAG, "Failure");
                                     });
         }
     }
