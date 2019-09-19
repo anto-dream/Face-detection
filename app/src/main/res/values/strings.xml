@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Face Detection</string>
+    <string name="stabilizing__text">STABILIZING..! \n Be Seated..</string>
 </resources>
