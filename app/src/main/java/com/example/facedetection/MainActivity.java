@@ -5,10 +5,14 @@ import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
 import android.view.TextureView;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,6 +42,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     private MediaPlayer mp;
     private CircularProgressBar circleProgressBar;
     private ImageAnalyser mImageAnalyser;
+    private View mStabilizingText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,9 +50,8 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         FirebaseApp.initializeApp(this);
         setContentView(R.layout.activity_main);
         initValues();
-        startStabilizing();
         if (allPermissionsGranted()) {
-            startCamera(); //start camera if permission has been granted by user
+            startStabilizing();
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
@@ -55,6 +59,61 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
     private void startStabilizing() {
         circleProgressBar.setProgressWithAnimation(100);
+        Animation animZoomIn = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_in);
+        Animation animZoomOut = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_out);
+        animZoomIn.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                Log.d(TAG, "onAnimationStart: ");
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mStabilizingText.startAnimation(animZoomOut);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+                Log.d(TAG, "onAnimationRepeat: ");
+            }
+        });
+        animZoomOut.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mStabilizingText.startAnimation(animZoomIn);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+        new Handler().postDelayed(() -> {
+            mStabilizingText.startAnimation(animZoomIn);
+            cancelAnimationOnText(animZoomIn, animZoomOut);
+            startFaceTracking();
+        }, 10000);
+    }
+
+    private void cancelAnimationOnText(Animation animZoomIn, Animation animZoomOut) {
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                findViewById(R.id.stabilizing_parent).setVisibility(View.GONE);
+                findViewById(R.id.progressBar_indeterminate).setVisibility(View.VISIBLE);
+                animZoomIn.setAnimationListener(null);
+                animZoomOut.setAnimationListener(null);
+            }
+        }, 6000);
+    }
+
+    private void startFaceTracking() {
+
     }
 
     private void initValues() {
@@ -64,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mSmiling = findViewById(R.id.smiling);
         mLeftEye = findViewById(R.id.left_eye);
         mRightEye = findViewById(R.id.right_eye);
+        mStabilizingText = findViewById(R.id.stabilizing_text);
         circleProgressBar = findViewById(R.id.custom_progressBar);
         mImageAnalyser = new ImageAnalyser(canvasRelative);
         mImageAnalyser.setUpdator(this);
