@@ -39,6 +39,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.example.facedetection.custom.CircularProgressBar;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.ml.vision.FirebaseVision;
@@ -57,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private int REQUEST_CODE_PERMISSIONS = 101;
     private final String[] REQUIRED_PERMISSIONS = new String[]{"android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"};
-    TextureView textureView;
+    private TextureView textureView;
     private FirebaseVisionFaceDetectorOptions highAccuracyOpts;
     private boolean mRecording = false;
     private ImageView canvasRelative;
@@ -66,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean mSleepy;
     private boolean mInitial = true;
     private MediaPlayer mp;
+    private CircularProgressBar circleProgressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,11 +75,16 @@ public class MainActivity extends AppCompatActivity {
         FirebaseApp.initializeApp(this);
         setContentView(R.layout.activity_main);
         initValues();
+        startStabilizing();
         if (allPermissionsGranted()) {
             startCamera(); //start camera if permission has been granted by user
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
+    }
+
+    private void startStabilizing() {
+        circleProgressBar.setProgressWithAnimation(100);
     }
 
     private void initValues() {
@@ -87,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
         mSmiling = findViewById(R.id.smiling);
         mLeftEye = findViewById(R.id.left_eye);
         mRightEye = findViewById(R.id.right_eye);
+        circleProgressBar = findViewById(R.id.custom_progressBar);
         findViewById(R.id.tap).setOnClickListener(view -> playsound());
     }
 
@@ -105,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
         VideoCapture videoCap = new VideoCapture(getVideoCaptureConfig(screen));
         ImageAnalysis analysis = getImageAnalysis(aspectRatio, screen);
         //bind to lifecycle:
-        CameraX.bindToLifecycle((LifecycleOwner) this,  analysis);
+        CameraX.bindToLifecycle((LifecycleOwner) this, analysis);
         configureFaceDetection();
     }
 
