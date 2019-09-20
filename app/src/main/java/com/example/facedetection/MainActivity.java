@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.util.Rational;
@@ -18,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraInfoUnavailableException;
 import androidx.camera.core.CameraX;
@@ -30,6 +32,8 @@ import androidx.core.content.ContextCompat;
 
 import com.example.facedetection.custom.CircularProgressBar;
 import com.google.firebase.FirebaseApp;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity implements ImageAnalyser.ClassificationUpdator {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -69,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mStabilizingText = findViewById(R.id.stabilizing_text);
         mCircleProgressBar = findViewById(R.id.custom_progressBar);
         mWarningView = findViewById(R.id.warning_view);
-        mImageAnalyser = new ImageAnalyser(canvasRelative);
+        mImageAnalyser = new ImageAnalyser(null);
         mImageAnalyser.setUpdator(this);
     }
 
@@ -163,15 +167,13 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
     @Override
     public void smilingProbability(float value) {
-        mSmiling.setText("Smiling : " + value);
+        //smiling probability available here
     }
 
     @Override
     public void eyeOpenProbability(float leftValue, float rightValue) {
-        mLeftEye.setText("LeftEye Open : " + leftValue);
-        mRightEye.setText("RightEye Open : " + rightValue);
-
-        if ((double) leftValue < 0.5) {
+        Log.d(TAG, "eyeOpenProbability: " + leftValue);
+        if ((double) leftValue < 0.7) {
             if (!mSleepy) {
                 Log.d(TAG, "starting timer");
                 timer.cancel();
@@ -179,37 +181,39 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             }
             mSleepy = true;
         } else {
+            Log.d(TAG, "stopping timer");
             mSleepy = false;
             timer.cancel();
-            stopSound();
+            stopWarning();
         }
     }
 
     CountDownTimer timer = new CountDownTimer(2000, 1000) {
         @Override
         public void onTick(long l) {
-            Log.d(TAG, "onTick: " + l / 1000);
+            //Log.d(TAG, "onTick: " + l / 1000);
         }
 
         @Override
         public void onFinish() {
-            Log.d(TAG, "onFinish: ");
-            playSound();
+            startWarning();
         }
     };
 
-    private void playSound() {
-        Log.d(TAG, "playSound: ");
+    private void startWarning() {
+        //Log.d(TAG, "startWarning: ");
         if (!mp.isPlaying()) {
             mp.start();
+            enableWarning();
         }
     }
 
-    private void stopSound() {
-        Log.d(TAG, "stopSound: ");
+    private void stopWarning() {
+        //Log.d(TAG, "stopWarning: ");
         if (mp.isPlaying()) {
             mp.seekTo(0);
             mp.pause();
+            disableWarning();
         }
     }
 
@@ -220,7 +224,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         animZoomIn.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation animation) {
-                Log.d(TAG, "onAnimationStart: ");
             }
 
             @Override
@@ -230,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
             @Override
             public void onAnimationRepeat(Animation animation) {
-                Log.d(TAG, "onAnimationRepeat: ");
+
             }
         });
         animZoomOut.setAnimationListener(new Animation.AnimationListener() {
@@ -253,12 +256,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             mStabilizingText.startAnimation(animZoomIn);
             cancelAnimationOnText(animZoomIn, animZoomOut);
             startFaceTracking();
-            enableWarning();
         }, CIRCULAR_PROGRESS_DURATION);
     }
 
     private void startFaceTracking() {
-
+        startCamera();
     }
 
     private void cancelAnimationOnText(Animation animZoomIn, Animation animZoomOut) {
@@ -274,13 +276,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
      * Enable red blink screen and Alarm
      */
     private void enableWarning() {
-        playSound();
         mAnimFadeIn = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fade_in);
         mAnimFadeOut = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fade_out);
         mAnimFadeIn.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation animation) {
-                Log.d(TAG, "onAnimationStart: ");
             }
 
             @Override
@@ -290,7 +290,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
             @Override
             public void onAnimationRepeat(Animation animation) {
-                Log.d(TAG, "onAnimationRepeat: ");
             }
         });
         mAnimFadeOut.setAnimationListener(new Animation.AnimationListener() {
@@ -316,7 +315,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
      * Disable warning view and alarm
      */
     private void disableWarning() {
-        stopSound();
         mWarningView.setVisibility(View.GONE);
         if (mAnimFadeIn != null && mAnimFadeOut != null) {
             mAnimFadeIn.setAnimationListener(null);

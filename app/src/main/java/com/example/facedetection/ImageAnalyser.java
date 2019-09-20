@@ -93,7 +93,9 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
                                         //processLiveFrame(height, width, faces);
                                         detectFaces(height, width, faces);
                                     } else {
-                                        mCanvas.setImageBitmap(null);
+                                        if (mCanvas != null) {
+                                            mCanvas.setImageBitmap(null);
+                                        }
                                     }
                                 })
                         .addOnFailureListener(
@@ -235,7 +237,9 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
             matrix.preScale(-1F, 1F);
             Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
             Log.d(TAG, "postcanvas: ");
-            mCanvas.setImageBitmap(flippedBitmap);
+            if (mCanvas != null) {
+                mCanvas.setImageBitmap(flippedBitmap);
+            }
         }
     }
 
@@ -298,7 +302,9 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
             Matrix matrix = new Matrix();
             matrix.preScale(-1F, 1F);
             Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-            mCanvas.setImageBitmap(flippedBitmap);
+            if (mCanvas != null) {
+                mCanvas.setImageBitmap(flippedBitmap);
+            }
         }
     }
 
