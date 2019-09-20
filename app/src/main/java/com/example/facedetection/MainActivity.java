@@ -33,16 +33,18 @@ import com.google.firebase.FirebaseApp;
 
 public class MainActivity extends AppCompatActivity implements ImageAnalyser.ClassificationUpdator {
     private static final String TAG = MainActivity.class.getSimpleName();
-    private int REQUEST_CODE_PERMISSIONS = 101;
+    private final int REQUEST_CODE_PERMISSIONS = 101;
+    private final long CIRCULAR_PROGRESS_DURATION = 10000;
     private final String[] REQUIRED_PERMISSIONS = new String[]{"android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"};
     private TextureView textureView;
     private boolean mRecording = false;
     private TextView mSmiling, mLeftEye, mRightEye;
     private boolean mSleepy;
     private MediaPlayer mp;
-    private CircularProgressBar circleProgressBar;
+    private CircularProgressBar mCircleProgressBar;
     private ImageAnalyser mImageAnalyser;
-    private View mStabilizingText;
+    private View mStabilizingText, mWarningView;
+    private Animation mAnimFadeIn, mAnimFadeOut;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,69 +53,10 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         setContentView(R.layout.activity_main);
         initValues();
         if (allPermissionsGranted()) {
-            startStabilizing();
+            startStabilizingAnimation();
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS);
         }
-    }
-
-    private void startStabilizing() {
-        circleProgressBar.setProgressWithAnimation(100);
-        Animation animZoomIn = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_in);
-        Animation animZoomOut = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_out);
-        animZoomIn.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-                Log.d(TAG, "onAnimationStart: ");
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
-                mStabilizingText.startAnimation(animZoomOut);
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
-                Log.d(TAG, "onAnimationRepeat: ");
-            }
-        });
-        animZoomOut.setAnimationListener(new Animation.AnimationListener() {
-            @Override
-            public void onAnimationStart(Animation animation) {
-
-            }
-
-            @Override
-            public void onAnimationEnd(Animation animation) {
-                mStabilizingText.startAnimation(animZoomIn);
-            }
-
-            @Override
-            public void onAnimationRepeat(Animation animation) {
-
-            }
-        });
-        new Handler().postDelayed(() -> {
-            mStabilizingText.startAnimation(animZoomIn);
-            cancelAnimationOnText(animZoomIn, animZoomOut);
-            startFaceTracking();
-        }, 10000);
-    }
-
-    private void cancelAnimationOnText(Animation animZoomIn, Animation animZoomOut) {
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                findViewById(R.id.stabilizing_parent).setVisibility(View.GONE);
-                findViewById(R.id.progressBar_indeterminate).setVisibility(View.VISIBLE);
-                animZoomIn.setAnimationListener(null);
-                animZoomOut.setAnimationListener(null);
-            }
-        }, 6000);
-    }
-
-    private void startFaceTracking() {
-
     }
 
     private void initValues() {
@@ -124,7 +67,8 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mLeftEye = findViewById(R.id.left_eye);
         mRightEye = findViewById(R.id.right_eye);
         mStabilizingText = findViewById(R.id.stabilizing_text);
-        circleProgressBar = findViewById(R.id.custom_progressBar);
+        mCircleProgressBar = findViewById(R.id.custom_progressBar);
+        mWarningView = findViewById(R.id.warning_view);
         mImageAnalyser = new ImageAnalyser(canvasRelative);
         mImageAnalyser.setUpdator(this);
     }
@@ -266,6 +210,117 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         if (mp.isPlaying()) {
             mp.seekTo(0);
             mp.pause();
+        }
+    }
+
+    private void startStabilizingAnimation() {
+        mCircleProgressBar.setProgressWithAnimation(100, CIRCULAR_PROGRESS_DURATION);
+        Animation animZoomIn = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_in);
+        Animation animZoomOut = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.zoom_out);
+        animZoomIn.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                Log.d(TAG, "onAnimationStart: ");
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mStabilizingText.startAnimation(animZoomOut);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+                Log.d(TAG, "onAnimationRepeat: ");
+            }
+        });
+        animZoomOut.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mStabilizingText.startAnimation(animZoomIn);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+        new Handler().postDelayed(() -> {
+            mStabilizingText.startAnimation(animZoomIn);
+            cancelAnimationOnText(animZoomIn, animZoomOut);
+            startFaceTracking();
+            enableWarning();
+        }, CIRCULAR_PROGRESS_DURATION);
+    }
+
+    private void startFaceTracking() {
+
+    }
+
+    private void cancelAnimationOnText(Animation animZoomIn, Animation animZoomOut) {
+        new Handler().postDelayed(() -> {
+            findViewById(R.id.stabilizing_parent).setVisibility(View.GONE);
+            findViewById(R.id.progressBar_indeterminate).setVisibility(View.VISIBLE);
+            animZoomIn.setAnimationListener(null);
+            animZoomOut.setAnimationListener(null);
+        }, 6000);
+    }
+
+    /**
+     * Enable red blink screen and Alarm
+     */
+    private void enableWarning() {
+        playSound();
+        mAnimFadeIn = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fade_in);
+        mAnimFadeOut = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.fade_out);
+        mAnimFadeIn.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+                Log.d(TAG, "onAnimationStart: ");
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mWarningView.startAnimation(mAnimFadeOut);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+                Log.d(TAG, "onAnimationRepeat: ");
+            }
+        });
+        mAnimFadeOut.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                mWarningView.startAnimation(mAnimFadeIn);
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+
+            }
+        });
+        mWarningView.startAnimation(mAnimFadeIn);
+    }
+
+    /**
+     * Disable warning view and alarm
+     */
+    private void disableWarning() {
+        stopSound();
+        mWarningView.setVisibility(View.GONE);
+        if (mAnimFadeIn != null && mAnimFadeOut != null) {
+            mAnimFadeIn.setAnimationListener(null);
+            mAnimFadeOut.setAnimationListener(null);
         }
     }
 

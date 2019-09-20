@@ -186,10 +186,10 @@ public class CircularProgressBar extends View {
      *
      * @param progress The progress it should animate to it.
      */
-    public void setProgressWithAnimation(float progress) {
+    public void setProgressWithAnimation(float progress, long duration) {
 
         ObjectAnimator objectAnimator = ObjectAnimator.ofFloat(this, "progress", progress);
-        objectAnimator.setDuration(10000);
+        objectAnimator.setDuration(duration);
         objectAnimator.setInterpolator(new DecelerateInterpolator());
         objectAnimator.start();
     }
