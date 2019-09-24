@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     private MediaPlayer mp;
     private CircularProgressBar mCircleProgressBar;
     private ImageAnalyser mImageAnalyser;
-    private View mStabilizingText, mWarningView;
+    private View mWarningView;
     private Animation mAnimFadeIn, mAnimFadeOut;
     private SensorManager mSensorManager;
     private ShakeDetector mDetector;
@@ -92,7 +92,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mSmiling = findViewById(R.id.smiling);
         mLeftEye = findViewById(R.id.left_eye);
         mRightEye = findViewById(R.id.right_eye);
-        mStabilizingText = findViewById(R.id.circular_progress_text);
         mCircleProgressBar = findViewById(R.id.custom_progressBar);
         mWarningView = findViewById(R.id.warning_view);
         mCircularProgressContainer = findViewById(R.id.stabilizing_parent);
@@ -209,8 +208,8 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     @Override
     public void eyeOpenProbability(float leftValue, float rightValue) {
         float eyeOpenProbability = (leftValue + rightValue) / 2;
-        Log.d("TEST", "eyeOpenProbability: " + eyeOpenProbability);
-        if ((double) eyeOpenProbability < 0.7) {
+        Log.d("TEST", "eyeOpenProbability: " + leftValue);
+        if ((double) leftValue < 0.7) {
             if (!mSleepy) {
                 Log.d("TEST", "starting timer");
                 //timer.cancel();
@@ -269,7 +268,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
             @Override
             public void onAnimationEnd(Animation animation) {
-                mStabilizingText.startAnimation(animZoomOut);
+                mCircularProgressText.startAnimation(animZoomOut);
             }
 
             @Override
@@ -285,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
             @Override
             public void onAnimationEnd(Animation animation) {
-                mStabilizingText.startAnimation(animZoomIn);
+                mCircularProgressText.startAnimation(animZoomIn);
             }
 
             @Override
@@ -294,7 +293,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             }
         });
         new Handler().postDelayed(() -> {
-            mStabilizingText.startAnimation(animZoomIn);
+            mCircularProgressText.startAnimation(animZoomIn);
             cancelAnimationOnText(animZoomIn, animZoomOut);
             startFaceTracking();
         }, CIRCULAR_PROGRESS_DURATION);
