@@ -86,8 +86,9 @@ public class CameraConfigs {
     }
 
     @SuppressLint("RestrictedApi")
-    public VideoCapture getVideoCaptureConfig(Size screen) {
+    public static VideoCapture getVideoCaptureConfig(Size screen, Rational aspectRatio) {
         VideoCaptureConfig config = new VideoCaptureConfig.Builder().
+                setTargetAspectRatio(aspectRatio).
                 setLensFacing(CameraX.LensFacing.BACK).setTargetResolution(screen).
                 setTargetAspectRatio(new Rational(1, 1)).build();
         return  new VideoCapture(config);

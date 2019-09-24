@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">Face Detection</string>
     <string name="stabilizing__text">STABILIZING..! \n Be Seated..</string>
+    <string name="video_recording">RECORDING..!</string>
+    <string name="video_recording_completed">Completed..!</string>
 </resources>
