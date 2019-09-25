@@ -43,7 +43,7 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity implements ImageAnalyser.ClassificationUpdator {
     private static final String TAG = MainActivity.class.getSimpleName();
     private final int REQUEST_CODE_PERMISSIONS = 101;
-    private final long CIRCULAR_PROGRESS_DURATION = 10000;
+    private final long CIRCULAR_PROGRESS_DURATION = 6000;
     private final long VIDEO_RECORDING_DURATION = 10000;
     private final String[] REQUIRED_PERMISSIONS = new String[]{"android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"};
     private TextureView textureView;
@@ -309,7 +309,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             findViewById(R.id.progressBar_indeterminate).setVisibility(View.VISIBLE);
             animZoomIn.setAnimationListener(null);
             animZoomOut.setAnimationListener(null);
-        }, 6000);
+        }, 4000);
     }
 
     /**
