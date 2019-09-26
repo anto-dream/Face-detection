@@ -3,6 +3,7 @@ package com.example.facedetection;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Matrix;
+import android.os.Handler;
 import android.util.Rational;
 import android.util.Size;
 import android.view.Surface;
@@ -94,12 +95,15 @@ public class CameraConfigs {
         return  new VideoCapture(config);
     }
 
-    public ImageAnalysis getImageAnalysisConfig(ImageAnalyser imageAnalyser, Rational aspectRatio, Size screen) {
+    public ImageAnalysis getImageAnalysisConfig(ImageAnalyser imageAnalyser, Rational aspectRatio, Size screen, Handler handler) {
         ImageAnalysisConfig analysisConfig = new ImageAnalysisConfig.Builder()
                 .setTargetAspectRatio(aspectRatio)
                 .setTargetResolution(screen)
+
                 .setTargetRotation(((AppCompatActivity) mContext).getWindowManager().getDefaultDisplay().getRotation())
                 .setLensFacing(CameraX.LensFacing.FRONT)
+                .setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+                .setImageQueueDepth(10)
                 .build();
 
         ImageAnalysis analysis = new ImageAnalysis(analysisConfig);

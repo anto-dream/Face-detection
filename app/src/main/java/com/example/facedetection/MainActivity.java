@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
@@ -25,7 +27,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.camera.core.CameraInfoUnavailableException;
 import androidx.camera.core.CameraX;
 import androidx.camera.core.ImageAnalysis;
@@ -59,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     private ShakeDetector mDetector;
     private View mCircularProgressContainer;
     private TextView mCircularProgressText;
+    private HandlerThread mHandlerThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mWarningView = findViewById(R.id.warning_view);
         mCircularProgressContainer = findViewById(R.id.stabilizing_parent);
         mCircularProgressText = findViewById(R.id.circular_progress_text);
-        mImageAnalyser = new ImageAnalyser(null);
+        mImageAnalyser = new ImageAnalyser(canvasRelative);
         mImageAnalyser.setUpdator(this);
     }
 
@@ -126,57 +128,14 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         Size screen = new Size(textureView.getWidth(), textureView.getHeight()); //size of the screen
         CameraConfigs cameraConfigs = new CameraConfigs(this);
         Preview previewConfig = cameraConfigs.getPreviewConfig(textureView, aspectRatio, screen);
-        ImageAnalysis analysis = cameraConfigs.getImageAnalysisConfig(mImageAnalyser, aspectRatio, screen);
+        mHandlerThread =  new HandlerThread("MyHandlerThread");
+        mHandlerThread.start();
+        Looper looper = mHandlerThread.getLooper();
+        Handler handler = new Handler(looper);
+        ImageAnalysis analysis = cameraConfigs.getImageAnalysisConfig(mImageAnalyser, aspectRatio, screen, handler);
         //bind to lifecycle:
         CameraX.bindToLifecycle(this, analysis, previewConfig);
     }
-
-   /* @SuppressLint("RestrictedApi")
-    private void setCaptureButton(ImageCapture imgCap, VideoCapture videoCap) {
-        findViewById(R.id.imgCapture).setOnClickListener(v -> {
-            File file = new File(Environment.getExternalStorageDirectory() + "/" + System.currentTimeMillis() + ".mp4");
-            if (mRecording) {
-                Log.d(TAG, "stopRecording");
-                mRecording = false;
-                videoCap.stopRecording();
-            } else {
-                Log.d(TAG, "startRecording ");
-                mRecording = true;
-                videoCap.startRecording(file, new VideoCapture.OnVideoSavedListener() {
-                    @Override
-                    public void onVideoSaved(@NonNull File file) {
-                        String msg = "video captured at " + file.getAbsolutePath();
-                        Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
-                    }
-
-                    @Override
-                    public void onError(@NonNull VideoCapture.VideoCaptureError videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                        String msg = "video capture failed : " + message;
-                        Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
-                        if (cause != null) {
-                            cause.printStackTrace();
-                        }
-                    }
-                });
-            }
-            *//*imgCap.takePicture(file, new ImageCapture.OnImageSavedListener() {
-                @Override
-                public void onImageSaved(@NonNull File file) {
-                    String msg = "Pic captured at " + file.getAbsolutePath();
-                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
-                }
-
-                @Override
-                public void onError(@NonNull ImageCapture.ImageCaptureError imageCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                    String msg = "Pic capture failed : " + message;
-                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
-                    if (cause != null) {
-                        cause.printStackTrace();
-                    }
-                }
-            });*//*
-        });
-    }*/
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -246,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
     private void stopWarning() {
         //Log.d(TAG, "stopWarning: ");
-         try {
+        try {
             if (mp.isPlaying()) {
                 mp.seekTo(0);
                 mp.pause();
@@ -443,6 +402,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     protected void onDestroy() {
         super.onDestroy();
         mp.release();
+        mHandlerThread.quit();
     }
 }
 

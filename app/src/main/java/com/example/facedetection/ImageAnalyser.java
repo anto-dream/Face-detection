@@ -24,6 +24,7 @@ import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetector;
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions;
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceLandmark;
 
+import java.io.IOException;
 import java.util.List;
 
 public class ImageAnalyser implements ImageAnalysis.Analyzer {
@@ -75,19 +76,17 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
         int height = mediaImage.getHeight();
         int width = mediaImage.getWidth();
         int rotation = degreesToFirebaseRotation(degrees);
+        performFaceDetetcion(mediaImage, rotation);
+    }
+
+    private void performFaceDetetcion(Image mediaImage, int rotation) {
         FirebaseVisionImage image =
                 FirebaseVisionImage.fromMediaImage(mediaImage, rotation);
-        // Pass image to an ML Kit Vision API
-        // ...
         FirebaseVisionFaceDetector detector = FirebaseVision.getInstance()
                 .getVisionFaceDetector(visionFaceDetectorOptions);
-
-        Task<List<FirebaseVisionFace>> result =
-                detector.detectInImage(image)
-                        .addOnSuccessListener(
+        detector.detectInImage(image);
+                        /*.addOnSuccessListener(
                                 faces -> {
-                                    // Task completed successfully
-                                    // ...
                                     int size = faces.size();
                                     if (size > 0) {
                                         //processLiveFrame(height, width, faces);
@@ -101,7 +100,21 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
                         .addOnFailureListener(
                                 e -> {
                                     Log.d(TAG, "Failure");
-                                });
+                                    if (mCanvas != null) {
+                                        mCanvas.setImageBitmap(null);
+                                    }
+                                }).addOnCompleteListener(task -> {
+                    try {
+                        detector.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });*/
+        try {
+            detector.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -299,11 +312,23 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
                 mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability());
             }
 
-            Matrix matrix = new Matrix();
-            matrix.preScale(-1F, 1F);
-            Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
             if (mCanvas != null) {
+                Matrix matrix = new Matrix();
+                matrix.preScale(-1F, 1F);
+                Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
                 mCanvas.setImageBitmap(flippedBitmap);
+            }
+        }
+    }
+
+    private void performFaceClassification(List<FirebaseVisionFace> faces) {
+        int index;
+        int size = faces.size();
+        for (index = 0; index < size; index++) {
+            FirebaseVisionFace face = faces.get(index);
+            if (mUpdator != null) {
+                mUpdator.smilingProbability(face.getSmilingProbability());
+                mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability());
             }
         }
     }
