@@ -13,6 +13,7 @@ import android.widget.ImageView;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
@@ -73,19 +74,21 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
             return;
         }
         Image mediaImage = imageProxy.getImage();
-        int height = mediaImage.getHeight();
-        int width = mediaImage.getWidth();
         int rotation = degreesToFirebaseRotation(degrees);
         performFaceDetetcion(mediaImage, rotation);
     }
 
     private void performFaceDetetcion(Image mediaImage, int rotation) {
+        int height = mediaImage.getHeight();
+        int width = mediaImage.getWidth();
         FirebaseVisionImage image =
                 FirebaseVisionImage.fromMediaImage(mediaImage, rotation);
+        FirebaseVisionFaceDetectorOptions configs = new FirebaseVisionFaceDetectorOptions.Builder()
+                .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
+                .build();
         FirebaseVisionFaceDetector detector = FirebaseVision.getInstance()
-                .getVisionFaceDetector(visionFaceDetectorOptions);
-        detector.detectInImage(image);
-                        /*.addOnSuccessListener(
+                .getVisionFaceDetector(configs);
+        detector.detectInImage(image);/*.addOnSuccessListener(
                                 faces -> {
                                     int size = faces.size();
                                     if (size > 0) {
@@ -110,11 +113,6 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
                         e.printStackTrace();
                     }
                 });*/
-        try {
-            detector.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     /**

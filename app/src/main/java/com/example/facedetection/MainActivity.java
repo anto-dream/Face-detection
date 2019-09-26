@@ -142,7 +142,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                startCamera();
+                startStabilizingAnimation();
             } else {
                 Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show();
                 finish();
