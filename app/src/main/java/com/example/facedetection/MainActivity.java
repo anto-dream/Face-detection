@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -15,7 +16,6 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Rational;
 import android.util.Size;
@@ -410,7 +410,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         FirebaseVisionFaceDetectorOptions options = new FirebaseVisionFaceDetectorOptions.Builder()
                 .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
                 .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
-
                 .build();
         FirebaseVisionFaceDetector faceDetector = FirebaseVision.getInstance().getVisionFaceDetector(options);
         faceDetector.detectInImage(firebaseVisionImage).addOnSuccessListener(firebaseVisionFaces -> {
@@ -445,33 +444,42 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         landmarkPaint.setColor(-3800852);
         landmarkPaint.setStyle(Paint.Style.FILL);
         landmarkPaint.setStrokeWidth(8F);
-        int index;
+        int index, prominentFaceIndex = 0;
         int size = faces.size();
+        double largestArea = 0;
         for (index = 0; index < size; index++) {
             FirebaseVisionFace face = faces.get(index);
-            canvas.drawRect(face.getBoundingBox(), facePaint);
-            //canvas.drawText("Face$index", (face.getBoundingBox().centerX() - face.getBoundingBox().width() / 2F) + 8F, (face.getBoundingBox().centerY() + face.getBoundingBox().height() / 2F) - 8F, faceTextPaint);
+            Rect rect = face.getBoundingBox();
+            double currentArea = rect.width() * rect.height();
+            if (largestArea < currentArea) {
+                largestArea = currentArea;
+                prominentFaceIndex = index;
+            }
+        }
+        FirebaseVisionFace face = faces.get(prominentFaceIndex);
+        canvas.drawRect(face.getBoundingBox(), facePaint);
+        //canvas.drawText("Face " + face.getTrackingId(), (face.getBoundingBox().centerX() - face.getBoundingBox().width() / 2F) + 8F, (face.getBoundingBox().centerY() + face.getBoundingBox().height() / 2F) - 8F, faceTextPaint);
 
-            if (face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EYE) != null) {
-                FirebaseVisionFaceLandmark leftEye = face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EYE);
-                canvas.drawCircle(leftEye.getPosition().getX(), leftEye.getPosition().getY(), 8F, landmarkPaint);
-            }
-            if (face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EYE) != null) {
-                FirebaseVisionFaceLandmark rightEye = face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EYE);
-                canvas.drawCircle(rightEye.getPosition().getX(), rightEye.getPosition().getY(), 8F, landmarkPaint);
-            }
-            if (face.getLandmark(FirebaseVisionFaceLandmark.NOSE_BASE) != null) {
-                FirebaseVisionFaceLandmark nose = face.getLandmark(FirebaseVisionFaceLandmark.NOSE_BASE);
-                canvas.drawCircle(nose.getPosition().getX(), nose.getPosition().getY(), 8F, landmarkPaint);
-            }
-            if (face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EAR) != null) {
-                FirebaseVisionFaceLandmark leftEar = face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EAR);
-                canvas.drawCircle(leftEar.getPosition().getX(), leftEar.getPosition().getY(), 8F, landmarkPaint);
-            }
-            if (face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EAR) != null) {
-                FirebaseVisionFaceLandmark rightEar = face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EAR);
-                canvas.drawCircle(rightEar.getPosition().getX(), rightEar.getPosition().getY(), 8F, landmarkPaint);
-            }
+        if (face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EYE) != null) {
+            FirebaseVisionFaceLandmark leftEye = face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EYE);
+            canvas.drawCircle(leftEye.getPosition().getX(), leftEye.getPosition().getY(), 8F, landmarkPaint);
+        }
+        if (face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EYE) != null) {
+            FirebaseVisionFaceLandmark rightEye = face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EYE);
+            canvas.drawCircle(rightEye.getPosition().getX(), rightEye.getPosition().getY(), 8F, landmarkPaint);
+        }
+        if (face.getLandmark(FirebaseVisionFaceLandmark.NOSE_BASE) != null) {
+            FirebaseVisionFaceLandmark nose = face.getLandmark(FirebaseVisionFaceLandmark.NOSE_BASE);
+            canvas.drawCircle(nose.getPosition().getX(), nose.getPosition().getY(), 8F, landmarkPaint);
+        }
+        if (face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EAR) != null) {
+            FirebaseVisionFaceLandmark leftEar = face.getLandmark(FirebaseVisionFaceLandmark.LEFT_EAR);
+            canvas.drawCircle(leftEar.getPosition().getX(), leftEar.getPosition().getY(), 8F, landmarkPaint);
+        }
+        if (face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EAR) != null) {
+            FirebaseVisionFaceLandmark rightEar = face.getLandmark(FirebaseVisionFaceLandmark.RIGHT_EAR);
+            canvas.drawCircle(rightEar.getPosition().getX(), rightEar.getPosition().getY(), 8F, landmarkPaint);
+        }
               /*  if (face.getLandmark(FirebaseVisionFaceLandmark.MOUTH_LEFT) != null && face.getLandmark(FirebaseVisionFaceLandmark.MOUTH_BOTTOM) != null && face.getLandmark(FirebaseVisionFaceLandmark.MOUTH_RIGHT) != null) {
                     FirebaseVisionFaceLandmark leftMouth = face.getLandmark(FirebaseVisionFaceLandmark.MOUTH_LEFT);
                     FirebaseVisionFaceLandmark bottomMouth = face.getLandmark(FirebaseVisionFaceLandmark.MOUTH_BOTTOM);
@@ -480,16 +488,15 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
                     canvas.drawLine(bottomMouth.getPosition().getX(), bottomMouth.getPosition().getY(), rightMouth.getPosition().getX(), rightMouth.getPosition().getY(), landmarkPaint);
                 }*/
 
-            if (mCanvas != null) {
-                Matrix matrix = new Matrix();
-                matrix.preScale(-1F, 1F);
-                Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-                mCanvas.setImageBitmap(flippedBitmap);
-            }
-            eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability(), face.getHeadEulerAngleY());
-            //Log.d(TAG, "getEuler Y: " + face.getHeadEulerAngleY());
-            //Log.d(TAG, "getEuler Z: " + face.getHeadEulerAngleZ());
+        if (mCanvas != null) {
+            Matrix matrix = new Matrix();
+            matrix.preScale(-1F, 1F);
+            Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            mCanvas.setImageBitmap(flippedBitmap);
         }
+        eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability(), face.getHeadEulerAngleY());
+        //Log.d(TAG, "getEuler Y: " + face.getHeadEulerAngleY());
+        //Log.d(TAG, "getEuler Z: " + face.getHeadEulerAngleZ());
     }
 }
 

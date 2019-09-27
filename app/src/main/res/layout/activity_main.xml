@@ -21,7 +21,7 @@
             android:id="@+id/face_detection_camera_image_view"
             android:layout_width="match_parent"
             android:scaleType="centerCrop"
-            android:background="@drawable/background"
+
             android:layout_height="match_parent" />
 
         <Button
