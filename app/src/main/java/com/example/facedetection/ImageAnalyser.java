@@ -13,8 +13,6 @@ import android.widget.ImageView;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
 import com.google.firebase.ml.vision.common.FirebaseVisionImageMetadata;
@@ -25,7 +23,6 @@ import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetector;
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions;
 import com.google.firebase.ml.vision.face.FirebaseVisionFaceLandmark;
 
-import java.io.IOException;
 import java.util.List;
 
 public class ImageAnalyser implements ImageAnalysis.Analyzer {
@@ -307,7 +304,7 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
 
             if (mUpdator != null) {
                 mUpdator.smilingProbability(face.getSmilingProbability());
-                mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability());
+                mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getLeftEyeOpenProbability(), face.getHeadEulerAngleY());
             }
 
             if (mCanvas != null) {
@@ -326,7 +323,7 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
             FirebaseVisionFace face = faces.get(index);
             if (mUpdator != null) {
                 mUpdator.smilingProbability(face.getSmilingProbability());
-                mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability());
+                mUpdator.eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getLeftEyeOpenProbability(), face.getHeadEulerAngleY());
             }
         }
     }
@@ -334,6 +331,6 @@ public class ImageAnalyser implements ImageAnalysis.Analyzer {
     interface ClassificationUpdator {
         void smilingProbability(float value);
 
-        void eyeOpenProbability(float leftValue, float rightValue);
+        void eyeOpenProbability(float leftValue, float rightValue, float eulerY);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.facedetection;
 
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -16,6 +17,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
+import android.util.Rational;
+import android.util.Size;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -26,13 +29,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraInfoUnavailableException;
+import androidx.camera.core.CameraX;
+import androidx.camera.core.VideoCapture;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.facedetection.custom.CircularProgressBar;
 import com.example.facedetection.custom.ShakeDetector;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
@@ -108,15 +114,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mCanvas = findViewById(R.id.face_detection_camera_image_view);
         mCameraView.setFacing(Facing.FRONT);
         mCameraView.setLifecycleOwner(this);
-        mCameraView.addFrameProcessor(this);
     }
 
     private void initSensor() {
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         Sensor sensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-
-        Log.d(TAG, sensor.getName() + " mindelay: " + sensor.getMinDelay());
-        Log.d(TAG, "initSensor: registering");
         mDetector = new ShakeDetector();
         mDetector.setOnShakeListener(count -> {
             Log.d(TAG, "onShake: " + count);
@@ -151,10 +153,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         //smiling probability available here
     }
 
-    public void eyeOpenProbability(float leftValue, float rightValue) {
+    public void eyeOpenProbability(float leftValue, float rightValue, float eulerY) {
         float eyeOpenProbability = (leftValue + rightValue) / 2;
-        Log.d("TEST", "eyeOpenProbability: " + leftValue);
-        if ((double) leftValue < 0.7) {
+        Log.d("TEST", "eyeOpenProbability: " + eyeOpenProbability);
+        Log.d("TEST", "euler y: " + eulerY);
+        if ((double) eyeOpenProbability < 0.7 || (eulerY < -20 || eulerY > 20)) {
             if (!mSleepy) {
                 Log.d("TEST", "starting timer");
                 //timer.cancel();
@@ -249,7 +252,12 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             findViewById(R.id.progressBar_indeterminate).setVisibility(View.VISIBLE);
             animZoomIn.setAnimationListener(null);
             animZoomOut.setAnimationListener(null);
+            startFaceTracking();
         }, 4000);
+    }
+
+    private void startFaceTracking() {
+        mCameraView.addFrameProcessor(this);
     }
 
     /**
@@ -302,17 +310,48 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         }
     }
 
+    @SuppressLint("RestrictedApi")
     private void startVideoRecording() {
+        mCameraView.stop();
+        mCameraView.setVisibility(View.INVISIBLE);
         Log.d(TAG, "startRecording:");
+        showVideoRecordingAnimation();
+        CameraX.unbindAll();
+        try {
+            CameraX.getCameraWithLensFacing(CameraX.LensFacing.BACK);
+        } catch (CameraInfoUnavailableException e) {
+            e.printStackTrace();
+        }
+        Rational aspectRatio = new Rational(mCameraView.getWidth(), mCameraView.getHeight());
+        Size screen = new Size(mCameraView.getWidth(), mCameraView.getHeight());
+        VideoCapture videoCap = CameraConfigs.getVideoCaptureConfig(screen, aspectRatio);
+        CameraX.bindToLifecycle(this, videoCap);
         File file = new File(Environment.getExternalStorageDirectory() + "/" + System.currentTimeMillis() + ".mp4");
-        mCameraView.startCapturingVideo(file);
-        new Handler().postDelayed(() -> {
-            mRecording = false;
-            Log.d(TAG, "stop recording ");
-            mCircularProgressText.setText(R.string.video_recording_completed);
-            mCameraView.stopCapturingVideo();
-        }, VIDEO_RECORDING_DURATION);
+        if (!mRecording) {
+            mRecording = true;
+            videoCap.startRecording(file, new VideoCapture.OnVideoSavedListener() {
+                @Override
+                public void onVideoSaved(@NonNull File file) {
+                    String msg = "video captured at " + file.getAbsolutePath();
+                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
+                }
 
+                @Override
+                public void onError(@NonNull VideoCapture.VideoCaptureError videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+                    String msg = "video capture failed : " + message;
+                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
+                    if (cause != null) {
+                        cause.printStackTrace();
+                    }
+                }
+            });
+            new Handler().postDelayed(() -> {
+                mRecording = false;
+                Log.d(TAG, "stop recording ");
+                mCircularProgressText.setText(R.string.video_recording_completed);
+                videoCap.stopRecording();
+            }, VIDEO_RECORDING_DURATION);
+        }
     }
 
     private void showVideoRecordingAnimation() {
@@ -343,9 +382,14 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     }
 
     private void reset() {
+        CameraX.unbindAll();
         mCircularProgressContainer.setVisibility(View.GONE);
         stopWarning();
         initSensor();
+        mCameraView.setVisibility(View.VISIBLE);
+        mCameraView.start();
+        mCameraView.setFacing(Facing.FRONT);
+        startFaceTracking();
     }
 
     @Override
@@ -372,18 +416,19 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
 
                 .build();
         FirebaseVisionFaceDetector faceDetector = FirebaseVision.getInstance().getVisionFaceDetector(options);
-        faceDetector.detectInImage(firebaseVisionImage).addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionFace>>() {
-            @Override
-            public void onSuccess(List<FirebaseVisionFace> firebaseVisionFaces) {
-                if (firebaseVisionFaces.size() > 0) {
-                    performFaceDetection(width, height, firebaseVisionFaces);
-                } else {
+        faceDetector.detectInImage(firebaseVisionImage).addOnSuccessListener(firebaseVisionFaces -> {
+            if (firebaseVisionFaces.size() > 0) {
+                performFaceDetection(width, height, firebaseVisionFaces);
+            } else {
+                if (mCanvas != null) {
                     mCanvas.setImageBitmap(null);
                 }
             }
+        }).addOnFailureListener(e -> {
+            if (mCanvas != null) {
+                mCanvas.setImageBitmap(null);
+            }
         });
-
-
     }
 
     private void performFaceDetection(int width, int height, List<FirebaseVisionFace> faces) {
@@ -444,7 +489,9 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
                 Bitmap flippedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
                 mCanvas.setImageBitmap(flippedBitmap);
             }
-            eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability());
+            eyeOpenProbability(face.getLeftEyeOpenProbability(), face.getRightEyeOpenProbability(), face.getHeadEulerAngleY());
+            //Log.d(TAG, "getEuler Y: " + face.getHeadEulerAngleY());
+            //Log.d(TAG, "getEuler Z: " + face.getHeadEulerAngleZ());
         }
     }
 }
