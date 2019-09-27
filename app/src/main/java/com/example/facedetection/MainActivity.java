@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     private ShakeDetector mDetector;
     private View mCircularProgressContainer;
     private TextView mCircularProgressText;
-    private HandlerThread mHandlerThread;
     private CameraView mCameraView;
     private ImageView mCanvas;
 
@@ -193,12 +192,11 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     }
 
     private void stopWarning() {
-        //Log.d(TAG, "stopWarning: ");
+        disableWarning();
         try {
             if (mp.isPlaying()) {
                 mp.seekTo(0);
                 mp.pause();
-                disableWarning();
             }
         } catch (IllegalStateException ex) {
             Log.e(TAG, "stopWarning: " + ex.getMessage());
@@ -333,13 +331,13 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
                 @Override
                 public void onVideoSaved(@NonNull File file) {
                     String msg = "video captured at " + file.getAbsolutePath();
-                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
                 public void onError(@NonNull VideoCapture.VideoCaptureError videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
                     String msg = "video capture failed : " + message;
-                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_LONG).show();
+                    Toast.makeText(getBaseContext(), msg, Toast.LENGTH_SHORT).show();
                     if (cause != null) {
                         cause.printStackTrace();
                     }
@@ -396,7 +394,6 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     protected void onDestroy() {
         super.onDestroy();
         mp.release();
-        mHandlerThread.quit();
     }
 
     @Override
