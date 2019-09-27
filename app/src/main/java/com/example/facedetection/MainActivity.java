@@ -469,7 +469,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
                 .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
                 .build();
         FirebaseVisionFaceDetector faceDetector = FirebaseVision.getInstance().getVisionFaceDetector(options);
-        faceDetector.detectInImage(firebaseVisionImage).addOnSuccessListener(this, firebaseVisionFaces -> {
+        faceDetector.detectInImage(firebaseVisionImage).addOnSuccessListener(firebaseVisionFaces -> {
             Log.d(TAG, "onSuccess: " + firebaseVisionFaces.size());
             if (firebaseVisionFaces.size() > 0) {
                 mFaceDetcted = true;
