@@ -12,6 +12,7 @@ import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
@@ -39,6 +40,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.facedetection.custom.CircularProgressBar;
 import com.example.facedetection.custom.ShakeDetector;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.ml.vision.FirebaseVision;
 import com.google.firebase.ml.vision.common.FirebaseVisionImage;
@@ -57,8 +59,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import rx.Observer;
-import rx.subjects.PublishSubject;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.subjects.PublishSubject;
+
 
 public class MainActivity extends AppCompatActivity implements ImageAnalyser.ClassificationUpdator, FrameProcessor {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -80,7 +83,9 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     private CameraView mCameraView;
     private ImageView mCanvas;
     private boolean mFaceDetcted;
-    private PublishSubject<Frame> source;
+    private PublishSubject<FirebaseVisionImage> mSource;
+    private DisposableObserver<FirebaseVisionImage> mObserver;
+    private int mWidth, mHeight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,7 +109,9 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     @Override
     protected void onPause() {
         super.onPause();
-        mSensorManager.unregisterListener(mDetector);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CUPCAKE) {
+            mSensorManager.unregisterListener(mDetector);
+        }
     }
 
     private void initValues() {
@@ -118,7 +125,25 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         mCircularProgressText = findViewById(R.id.circular_progress_text);
         mCameraView = findViewById(R.id.face_detection_camera_view);
         mCanvas = findViewById(R.id.face_detection_camera_image_view);
-        source = PublishSubject.<Frame>create();
+        mSource = PublishSubject.create();
+        mObserver = new DisposableObserver<FirebaseVisionImage>() {
+            @Override
+            public void onNext(FirebaseVisionImage image) {
+                Log.d(TAG, "onNext: ");
+                firebaseFaceDetect(image);
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.d(TAG, "onError: ");
+            }
+
+            @Override
+            public void onComplete() {
+                Log.d(TAG, "onComplete: ");
+            }
+        };
+        mSource.sample(200, TimeUnit.MILLISECONDS).subscribe(mObserver);
         initializeCameraView();
     }
 
@@ -410,6 +435,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     protected void onDestroy() {
         super.onDestroy();
         mp.release();
+        mObserver.dispose();
     }
 
     @Override
@@ -419,9 +445,16 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             if (frame.getSize() == null) {
                 return;
             }
-            int width = frame.getSize().getWidth();
-            int height = frame.getSize().getHeight();
-            firebaseFaceDetect(frame, width, height);
+            mWidth = frame.getSize().getWidth();
+            mHeight = frame.getSize().getHeight();
+            FirebaseVisionImageMetadata metadata = new FirebaseVisionImageMetadata.Builder()
+                    .setWidth(mWidth)
+                    .setHeight(mHeight)
+                    .setFormat(FirebaseVisionImageMetadata.IMAGE_FORMAT_NV21)
+                    .setRotation(FirebaseVisionImageMetadata.ROTATION_270)
+                    .build();
+            FirebaseVisionImage firebaseVisionImage = FirebaseVisionImage.fromByteArray(frame.getData(), metadata);
+            mSource.onNext(firebaseVisionImage);
         } else {
             this.runOnUiThread(() -> {
                 mCanvas.setImageDrawable(getResources().getDrawable(R.drawable.background, null));
@@ -430,14 +463,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
         }
     }
 
-    private void firebaseFaceDetect(@NonNull Frame frame, int width, int height) {
-        FirebaseVisionImageMetadata metadata = new FirebaseVisionImageMetadata.Builder()
-                .setWidth(width)
-                .setHeight(height)
-                .setFormat(FirebaseVisionImageMetadata.IMAGE_FORMAT_NV21)
-                .setRotation(FirebaseVisionImageMetadata.ROTATION_270)
-                .build();
-        FirebaseVisionImage firebaseVisionImage = FirebaseVisionImage.fromByteArray(frame.getData(), metadata);
+    private void firebaseFaceDetect(@NonNull FirebaseVisionImage firebaseVisionImage) {
         FirebaseVisionFaceDetectorOptions options = new FirebaseVisionFaceDetectorOptions.Builder()
                 .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
                 .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
@@ -447,7 +473,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             Log.d(TAG, "onSuccess: " + firebaseVisionFaces.size());
             if (firebaseVisionFaces.size() > 0) {
                 mFaceDetcted = true;
-                performFaceDetection(width, height, firebaseVisionFaces);
+                performFaceDetection(mWidth, mHeight, firebaseVisionFaces);
             } else {
                 if (mFaceDetcted) {
                     startWarning();
