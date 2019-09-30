@@ -457,7 +457,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
             mSource.onNext(firebaseVisionImage);
         } else {
             this.runOnUiThread(() -> {
-                mCanvas.setImageDrawable(getResources().getDrawable(R.drawable.background, null));
+                mCanvas.setBackground(getResources().getDrawable(R.drawable.background, null));
                 mCanvas.setImageBitmap(null);
             });
         }
