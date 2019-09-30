@@ -109,9 +109,7 @@ public class MainActivity extends AppCompatActivity implements ImageAnalyser.Cla
     @Override
     protected void onPause() {
         super.onPause();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CUPCAKE) {
-            mSensorManager.unregisterListener(mDetector);
-        }
+        mSensorManager.unregisterListener(mDetector);
     }
 
     private void initValues() {
